@@ -1,0 +1,26 @@
+2026-02-19 13:28:24,039 [INFO] ============================================================
+2026-02-19 13:28:24,040 [INFO]   SOC TICKET TRIAGE PIPELINE — STARTING
+2026-02-19 13:28:24,040 [INFO] ============================================================
+2026-02-19 13:28:24,041 [INFO]   Rules loaded from: /Users/isaac/Downloads/soc_triage_copy/config/rules.json
+2026-02-19 13:28:24,041 [INFO] [Stage 1] Loading tickets from: data/tickets.csv
+2026-02-19 13:28:24,042 [INFO]   Loaded 60 tickets from CSV.
+2026-02-19 13:28:24,042 [INFO] [Stage 2] Validating schema...
+2026-02-19 13:28:24,042 [INFO]   Schema validation passed. 60 tickets ready for processing.
+2026-02-19 13:28:24,042 [INFO] [Stage 3] Preprocessing tickets...
+2026-02-19 13:28:24,042 [INFO]   Preprocessing complete. Confidence bands assigned.
+2026-02-19 13:28:24,042 [INFO] [Stage 4] Calculating risk scores (CVSS V3.0)...
+2026-02-19 13:28:24,042 [INFO]   Risk scores assigned.
+2026-02-19 13:28:24,042 [INFO] [Stage 5] Enriching tickets with MITRE, CVE, and playbook data...
+2026-02-19 13:28:24,042 [INFO]   Enrichment complete: 56 keyword-matched, 4 fallback, 0 unrecognised.
+2026-02-19 13:28:24,042 [INFO] [Stage 6] Applying triage decision rules...
+2026-02-19 13:28:24,042 [INFO]   Triage decisions assigned.
+2026-02-19 13:28:24,042 [INFO] [Stage 7] Validating decisions against expected actions...
+2026-02-19 13:28:24,042 [INFO]   Accuracy:      100.0%  (60/60 correct)
+2026-02-19 13:28:24,042 [INFO]   FP rate:       0.0%  (over-triaged)
+2026-02-19 13:28:24,042 [INFO]   FN rate:       0.0%  (under-triaged)
+2026-02-19 13:28:24,044 [INFO] [Stage 8] Results written to: /Users/isaac/Downloads/soc_triage_copy/output/results.csv
+2026-02-19 13:28:24,047 [INFO]   Summary report written to: /Users/isaac/Downloads/soc_triage_copy/output/summary_report.txt
+2026-02-19 13:28:24,047 [INFO] ============================================================
+2026-02-19 13:28:24,047 [INFO]   PIPELINE COMPLETE  |  Runtime: 0.00s
+2026-02-19 13:28:24,047 [INFO]   Accuracy: 100.0%  |  Tickets: 60
+2026-02-19 13:28:24,047 [INFO] ============================================================

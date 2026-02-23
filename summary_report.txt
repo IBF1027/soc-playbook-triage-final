@@ -1,0 +1,49 @@
+============================================================
+  SOC TICKET TRIAGE — EXECUTION SUMMARY REPORT
+============================================================
+  Run timestamp : 2026-02-19 18:28:24 UTC
+  Runtime       : 0.00 seconds
+
+── DATASET OVERVIEW ─────────────────────────────────────
+  Total tickets processed : 60
+
+  Tickets by alert category:
+    Authentication Anomaly           12 tickets
+    Malware                          12 tickets
+    Network Anomaly                  12 tickets
+    Phishing                         12 tickets
+    Policy Violation                 12 tickets
+
+  Tickets by severity:
+    CRITICAL                         10 tickets
+    HIGH                             16 tickets
+    MEDIUM                           18 tickets
+    LOW                              16 tickets
+
+── TRIAGE DECISION DISTRIBUTION ────────────────────────
+    Close - False Positive                12 tickets
+    Close - Resolved                       4 tickets
+    Escalate                              22 tickets
+    Investigate                           22 tickets
+
+── VALIDATION METRICS ──────────────────────────────────
+  Correct decisions  : 60 / 60
+  Decision accuracy  : 100.0%
+  False positive rate: 0.0%  (over-triaged)
+  False negative rate: 0.0%  (under-triaged)
+  Accuracy target    : >95%  →  ✓ TARGET MET
+
+── PIPELINE STAGE COMPLETION ───────────────────────────
+  [✓] Stage 1 - Data Loader
+  [✓] Stage 2 - Schema Validator
+  [✓] Stage 3 - Preprocessor
+  [✓] Stage 4 - Risk Scoring Engine (CVSS V3.0)
+  [✓] Stage 5 - Enrichment Engine (MITRE / CVE / Playbook)
+  [✓] Stage 6 - Decision Engine (Triage Matrix)
+  [✓] Stage 7 - Validation Module
+  [✓] Stage 8 - Output Generator
+
+============================================================
+  Note: This tool is a Tier-1 decision support aid.
+  Final triage decisions remain under human analyst control.
+============================================================

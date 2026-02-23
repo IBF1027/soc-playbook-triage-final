@@ -1,0 +1,404 @@
+{
+  "risk_scoring": {
+    "severity_base_score": {
+      "CRITICAL": 9.5,
+      "HIGH": 7.5,
+      "MEDIUM": 5.0,
+      "LOW": 2.0
+    },
+    "confidence_multiplier": {
+      "HIGH": 1.0,
+      "MEDIUM": 0.75,
+      "LOW": 0.50
+    },
+    "confidence_bands": {
+      "HIGH":   [75, 100],
+      "MEDIUM": [40, 74],
+      "LOW":    [0,  39]
+    }
+  },
+
+  "triage_decision_matrix": {
+    "CRITICAL": { "HIGH": "Escalate",             "MEDIUM": "Escalate",             "LOW": "Investigate"          },
+    "HIGH":     { "HIGH": "Escalate",             "MEDIUM": "Investigate",          "LOW": "Investigate"          },
+    "MEDIUM":   { "HIGH": "Investigate",          "MEDIUM": "Investigate",          "LOW": "Close - False Positive"},
+    "LOW":      { "HIGH": "Close - Resolved",     "MEDIUM": "Close - False Positive","LOW": "Close - False Positive"}
+  },
+
+  "alert_types": {
+
+    "Suspicious Email Activity": {
+      "category_label": "Phishing",
+      "mitre_tactic": "TA0001 - Initial Access",
+      "default_mitre_technique": "T1566 - Phishing",
+      "indicator_rules": [
+        {
+          "match_keywords": ["credential harvesting", "harvesting url", "fake login", "macro attachment"],
+          "mitre_technique": "T1566.001 - Spearphishing Link / Attachment",
+          "possible_cve": "N/A (social engineering; no CVE applicable)",
+          "enrichment_context": "Indicator pattern matches an active credential-harvesting or malware-delivery phishing campaign. Sender domain likely registered within the last 7 days. Similar campaigns observed in threat intelligence feeds within 48 hours. Treat any user who clicked or opened attachment as potentially compromised.",
+          "immediate_containment": "Block sender domain at email gateway. Retract email from all recipient mailboxes via admin console. Reset credentials for any user who interacted with the email.",
+          "playbook_steps": [
+            "1. Pull full recipient list from mail server logs for this sender domain.",
+            "2. Retract email from all mailboxes using the admin email console immediately.",
+            "3. Identify users who clicked the link or opened the attachment via proxy or email gateway click-tracking logs.",
+            "4. Force password reset and MFA re-enrollment for every user who interacted.",
+            "5. Block sender domain and IP at email gateway and DNS sinkholes.",
+            "6. Extract and submit phishing URL, sender domain, and attachment hash as IOCs to threat intel platform.",
+            "7. Notify affected users with security awareness guidance.",
+            "8. If credential usage is confirmed post-click, escalate to Tier-2 immediately for account takeover investigation."
+          ]
+        },
+        {
+          "match_keywords": ["spoofed", "impersonat", "lookalike", "display name", "typosquat", "dmarc", "dkim"],
+          "mitre_technique": "T1566.001 - Spearphishing Link",
+          "possible_cve": "N/A (social engineering; no CVE applicable)",
+          "enrichment_context": "Sender is spoofing an executive or trusted internal identity. Domain fails DMARC, DKIM, or SPF alignment. This pattern is consistent with Business Email Compromise (BEC) or a targeted spearphishing campaign. Finance and admin users are common targets.",
+          "immediate_containment": "Retract all delivered emails from mailboxes. Block the spoofed or lookalike domain at gateway. Alert the impersonated individual and their team directly.",
+          "playbook_steps": [
+            "1. Check DMARC, DKIM, and SPF alignment results for the sender domain.",
+            "2. Determine whether this is a targeted spearphish (BEC) or opportunistic bulk campaign.",
+            "3. Retract emails from all affected mailboxes.",
+            "4. If executive impersonation: notify finance team and the impersonated executive directly via phone.",
+            "5. Block the lookalike or spoofed domain at email gateway and DNS.",
+            "6. Search mail logs for prior messages from the same domain or IP range.",
+            "7. Submit domain to brand protection vendor for takedown request.",
+            "8. Document IOCs and close ticket, or escalate if financial transaction was initiated."
+          ]
+        },
+        {
+          "match_keywords": ["bulk delivery", "newsletter", "marketing", "unsubscribe", "low confidence", "known sender", "auto-reply"],
+          "mitre_technique": "N/A - Likely false positive",
+          "possible_cve": "N/A",
+          "enrichment_context": "Alert pattern is consistent with bulk marketing email or an auto-generated internal message. Sender domain has neutral or positive reputation. No malicious indicators confirmed. High probability of false positive.",
+          "immediate_containment": "No immediate containment required. Confirm with requestor if needed.",
+          "playbook_steps": [
+            "1. Verify sender domain reputation via threat intel lookup.",
+            "2. Confirm presence of a valid unsubscribe mechanism or known sender relationship.",
+            "3. If sender is a known marketing platform or partner, whitelist domain to reduce future noise.",
+            "4. Document decision rationale and close ticket as false positive."
+          ]
+        }
+      ]
+    },
+
+    "Endpoint Malware Detection": {
+      "category_label": "Malware",
+      "mitre_tactic": "TA0002 - Execution / TA0003 - Persistence",
+      "default_mitre_technique": "T1204 - User Execution",
+      "indicator_rules": [
+        {
+          "match_keywords": ["ransomware", "shadow copy", "vssadmin", "smb scanning", "worm propagation"],
+          "mitre_technique": "T1486 - Data Encrypted for Impact",
+          "possible_cve": "CVE-2021-34527 (PrintNightmare) or CVE-2020-0796 (SMBGhost) - common ransomware precursors",
+          "enrichment_context": "Indicator pattern matches a ransomware deployment chain. Shadow copy deletion via vssadmin is a strong signal of ransomware execution. Network scanning suggests lateral movement before or during encryption. Immediate isolation is critical to limit blast radius.",
+          "immediate_containment": "Isolate host from network immediately using EDR quarantine policy. Do NOT reboot. Preserve memory image for forensics.",
+          "playbook_steps": [
+            "1. Quarantine the affected host immediately via EDR network isolation policy.",
+            "2. Preserve volatile memory dump before any remediation action (do not reboot).",
+            "3. Identify the infection vector: email attachment, malicious download, or lateral movement.",
+            "4. Scan all hosts on the same network segment for the same ransomware IOCs.",
+            "5. Check Active Directory for any new accounts or privilege escalations made in the last 24 hours.",
+            "6. Engage Tier-2 and Incident Response team immediately.",
+            "7. Verify and restore from the most recent clean backup after full forensic investigation.",
+            "8. Apply patches for CVE-2021-34527 and CVE-2020-0796 if not already patched."
+          ]
+        },
+        {
+          "match_keywords": ["c2 beacon", "registry persistence", "encoded powershell", "downloader", "dns tunnelling", "scheduled task"],
+          "mitre_technique": "T1547.001 - Registry Run Keys / T1059.001 - PowerShell",
+          "possible_cve": "CVE-2023-23397 (Outlook NTLM relay) or CVE-2022-30190 (Follina) - common dropper vectors",
+          "enrichment_context": "C2 beacon and persistence indicators confirm malware has established a foothold. Encoded PowerShell is used to evade detection while downloading second-stage payloads. Registry run key persistence survives reboots. Treat this host as fully compromised.",
+          "immediate_containment": "Block C2 IP and domain at perimeter firewall and proxy. Kill the malicious process via EDR. Remove the registry persistence key.",
+          "playbook_steps": [
+            "1. Block identified C2 IP and associated domain at perimeter firewall, web proxy, and DNS sinkhole.",
+            "2. Terminate the malicious process on the host via EDR remote kill.",
+            "3. Remove the registry run key persistence entry.",
+            "4. Decode and analyse the PowerShell payload to identify second-stage actions and additional IOCs.",
+            "5. Search SIEM for the same C2 IP and domain across all hosts in the environment.",
+            "6. Review email logs for evidence of CVE-2023-23397 or CVE-2022-30190 exploitation.",
+            "7. Patch Outlook and Office if affected versions are confirmed.",
+            "8. Submit all IOCs (hash, C2 IP, domain, registry key) to threat intel platform."
+          ]
+        },
+        {
+          "match_keywords": ["lsass", "credential dump", "lateral movement", "privilege escalation"],
+          "mitre_technique": "T1003.001 - LSASS Memory Dump",
+          "possible_cve": "CVE-2022-24521 (Windows CLFS EoP) - commonly used for privilege escalation prior to credential dump",
+          "enrichment_context": "LSASS access or dump attempt means all credentials cached on this host must be considered compromised. If the host is domain-joined, domain credentials including service accounts are at risk. Lateral movement confirms the attacker is actively pivoting.",
+          "immediate_containment": "Isolate host immediately. Assume all credentials cached on this host are compromised and initiate forced reset.",
+          "playbook_steps": [
+            "1. Isolate the endpoint immediately via EDR quarantine.",
+            "2. Initiate forced password reset for all user accounts that were logged into this host.",
+            "3. Reset the machine account password in Active Directory.",
+            "4. Temporarily disable affected accounts pending investigation.",
+            "5. Search for Qakbot or similar trojan persistence: scheduled tasks, DLL hijacks, startup folders.",
+            "6. Review Active Directory event logs for new admin account creation or privilege changes.",
+            "7. Check neighbouring hosts for the same lateral movement IOCs.",
+            "8. Escalate to Tier-2 for full forensic investigation and AD remediation."
+          ]
+        },
+        {
+          "match_keywords": ["pup", "adware", "quarantine successful", "low confidence signature", "sandbox clean", "no process injection"],
+          "mitre_technique": "N/A - Low severity; quarantine resolved",
+          "possible_cve": "N/A",
+          "enrichment_context": "Alert is consistent with a potentially unwanted program or a low-confidence signature match. AV quarantine was successful with no evidence of execution, network activity, or process injection. Risk to the environment is minimal.",
+          "immediate_containment": "No immediate containment required. Confirm quarantine status in EDR console.",
+          "playbook_steps": [
+            "1. Confirm quarantine was successful in EDR management console.",
+            "2. Verify no process execution, network connections, or persistence mechanisms were created.",
+            "3. Delete quarantined file after confirming no forensic value.",
+            "4. Update AV signature rules if false positive is confirmed.",
+            "5. Document and close ticket."
+          ]
+        }
+      ]
+    },
+
+    "Authentication Failure Anomaly": {
+      "category_label": "Authentication Anomaly",
+      "mitre_tactic": "TA0006 - Credential Access / TA0001 - Initial Access",
+      "default_mitre_technique": "T1078 - Valid Accounts",
+      "indicator_rules": [
+        {
+          "match_keywords": ["impossible travel", "two continents", "foreign ip", "tor exit node"],
+          "mitre_technique": "T1078.004 - Cloud Accounts / Valid Accounts",
+          "possible_cve": "N/A (credential stuffing or account compromise; no CVE applicable)",
+          "enrichment_context": "Impossible travel or TOR exit node login is a strong indicator of account compromise. The attacker may be using previously stolen credentials. Admin accounts under this indicator represent a critical risk due to elevated privileges.",
+          "immediate_containment": "Revoke all active sessions for the account immediately. Suspend the account pending user verification.",
+          "playbook_steps": [
+            "1. Revoke all active sessions for the account in the identity provider (Okta, Azure AD).",
+            "2. Suspend the account to prevent further access.",
+            "3. Contact the user via a verified out-of-band channel (phone call, not email) to confirm whether the login was authorised.",
+            "4. If confirmed unauthorised: reset password, revoke all MFA devices, and re-enrol MFA on a verified device.",
+            "5. Review the audit log for all actions taken during the foreign or TOR session (data access, downloads, setting changes).",
+            "6. If an admin account: check for new account creation, privilege escalation, or configuration changes.",
+            "7. Submit the source IP to threat intel and check for known credential-stuffing campaign association.",
+            "8. Escalate to Tier-2 if any data access or privilege misuse is confirmed during the suspicious session."
+          ]
+        },
+        {
+          "match_keywords": ["brute force", "50 failed", "failed logins", "failed login", "account locked"],
+          "mitre_technique": "T1110.001 - Brute Force: Password Guessing",
+          "possible_cve": "N/A (credential attack; no CVE applicable)",
+          "enrichment_context": "Brute-force volume and speed indicate an automated credential attack tool. Source IP may belong to a botnet. Account lockout policy effectiveness should be reviewed. Check whether any login ultimately succeeded from the attacking IP before lockout.",
+          "immediate_containment": "Block the attacking IP at the perimeter firewall. Lock the targeted account. Review and tighten account lockout policy threshold.",
+          "playbook_steps": [
+            "1. Block the attacking source IP at the perimeter firewall.",
+            "2. Lock the targeted account in the identity provider.",
+            "3. Verify that no successful login occurred from the attacking IP before lockout triggered.",
+            "4. If a successful login occurred: treat as full account compromise and follow impossible travel playbook.",
+            "5. Review account lockout policy — tighten threshold to 5-10 failed attempts if currently higher.",
+            "6. Check whether the same source IP targeted other accounts.",
+            "7. Submit source IP to threat intel platform.",
+            "8. Reset account password and unlock after confirmation with the account owner."
+          ]
+        },
+        {
+          "match_keywords": ["password spray", "30 accounts", "5 accounts", "rotating ip", "below lockout"],
+          "mitre_technique": "T1110.003 - Brute Force: Password Spraying",
+          "possible_cve": "N/A (credential attack; no CVE applicable)",
+          "enrichment_context": "Low-volume attempts distributed across many accounts are designed to evade lockout policies. Rotating source IPs indicate automation. Common passwords tried typically follow Season+Year or Company+Year patterns. No successful logins confirmed yet but this requires immediate monitoring.",
+          "immediate_containment": "Block the source IP subnet at perimeter. Enable risk-based conditional access policy for affected accounts.",
+          "playbook_steps": [
+            "1. Block the source IP subnet at perimeter firewall.",
+            "2. Query the identity provider for any successful authentication from the attacking IPs across all targeted accounts.",
+            "3. Force password reset for any account with a confirmed successful login.",
+            "4. Enable risk-based conditional access (Azure AD Identity Protection or Okta ThreatInsight) for all targeted accounts.",
+            "5. Notify all targeted users to change passwords if they use predictable patterns (e.g., Season+Year).",
+            "6. Monitor for follow-on spray attempts from new IP ranges.",
+            "7. Escalate to Tier-2 if any accounts are confirmed compromised."
+          ]
+        },
+        {
+          "match_keywords": ["mfa push", "new device", "off-hours", "unregistered device"],
+          "mitre_technique": "T1621 - Multi-Factor Authentication Request Generation",
+          "possible_cve": "N/A (MFA fatigue or push hijack; no CVE applicable)",
+          "enrichment_context": "MFA push accepted from an unregistered device during off-hours is consistent with MFA fatigue attack or SIM-swapping. The attacker may have the user's password and is relying on the user accidentally approving the push.",
+          "immediate_containment": "Revoke the suspicious session. Remove the unregistered device from MFA trusted devices. Contact user immediately.",
+          "playbook_steps": [
+            "1. Revoke the active session created after the suspicious MFA push.",
+            "2. Remove the unregistered device from the user's MFA trusted device list.",
+            "3. Contact the user via phone to determine whether they approved the push intentionally.",
+            "4. If unintentional: reset password and re-enrol MFA on verified device only.",
+            "5. Review all actions taken in the session after the MFA push was accepted.",
+            "6. Enable number-matching or additional context in MFA push to prevent future fatigue attacks.",
+            "7. Escalate to Tier-2 if sensitive data was accessed in the suspicious session."
+          ]
+        },
+        {
+          "match_keywords": ["user confirmed", "known device", "vacation", "self-reported", "accidental"],
+          "mitre_technique": "N/A - Confirmed false positive",
+          "possible_cve": "N/A",
+          "enrichment_context": "Authentication event has been confirmed as legitimate by the account owner or is consistent with known device and location patterns. No threat indicators present.",
+          "immediate_containment": "No containment required.",
+          "playbook_steps": [
+            "1. Confirm legitimacy with account owner via verified channel.",
+            "2. Document the confirmation and rationale.",
+            "3. Close ticket as false positive or resolved."
+          ]
+        }
+      ]
+    },
+
+    "Unusual Network Traffic": {
+      "category_label": "Network Anomaly",
+      "mitre_tactic": "TA0010 - Exfiltration / TA0011 - Command and Control",
+      "default_mitre_technique": "T1041 - Exfiltration Over C2 Channel",
+      "indicator_rules": [
+        {
+          "match_keywords": ["large outbound", "data exfiltration", "after hours", "2 gb", "mass data", "exfiltration pattern"],
+          "mitre_technique": "T1048 - Exfiltration Over Alternative Protocol",
+          "possible_cve": "N/A (post-exploitation exfiltration; no CVE applicable)",
+          "enrichment_context": "Large outbound transfer after hours to an uncategorised destination is a high-fidelity exfiltration indicator. Volume and timing are inconsistent with normal business operations. Investigate the originating host for malware or insider threat activity.",
+          "immediate_containment": "Block outbound traffic from the originating host to the external destination at the perimeter firewall. Isolate the host if malware is suspected.",
+          "playbook_steps": [
+            "1. Block outbound traffic from the source host to the external destination IP at the perimeter firewall.",
+            "2. Identify the originating process on the host responsible for the transfer via EDR telemetry.",
+            "3. Determine what data was transferred: classify the data type and sensitivity.",
+            "4. Check whether the destination IP is on any threat intel blacklist.",
+            "5. If malware is suspected as the cause: isolate the host and follow the Malware playbook.",
+            "6. If insider threat is suspected: preserve evidence, do not alert the user, and escalate to Tier-2 and HR.",
+            "7. Submit destination IP and any associated domains as IOCs.",
+            "8. File an incident report and determine whether a data breach notification is required."
+          ]
+        },
+        {
+          "match_keywords": ["dns tunnelling", "high query frequency", "low ttl", "single domain"],
+          "mitre_technique": "T1071.004 - Application Layer Protocol: DNS",
+          "possible_cve": "N/A (DNS abuse; no CVE applicable)",
+          "enrichment_context": "DNS tunnelling is used by attackers to exfiltrate data or maintain C2 communication while evading traditional firewall controls. High-frequency queries to a single low-TTL domain are a strong indicator. Identify the host generating the queries and treat as likely compromised.",
+          "immediate_containment": "Block the destination domain at the DNS resolver and sinkholes. Isolate the originating host.",
+          "playbook_steps": [
+            "1. Identify the internal host generating the high-frequency DNS queries.",
+            "2. Block the queried domain at the internal DNS resolver and all DNS sinkholes.",
+            "3. Isolate the originating host from the network.",
+            "4. Analyse DNS query content for encoded data patterns (Base64, hex encoding in subdomains).",
+            "5. Review the host for malware consistent with DNS-tunnelling tools (Iodine, DNScat).",
+            "6. Check how long the tunnelling has been active and estimate data volume transferred.",
+            "7. Submit the malicious domain as an IOC.",
+            "8. Escalate to Tier-2 for full forensic investigation."
+          ]
+        },
+        {
+          "match_keywords": ["blacklisted ip", "c2 pattern", "non-standard port", "encoded payload", "port 4444", "port 8443"],
+          "mitre_technique": "T1095 - Non-Application Layer Protocol / T1571 - Non-Standard Port",
+          "possible_cve": "CVE-2021-44228 (Log4Shell) or CVE-2021-26084 (Confluence RCE) - common vectors for establishing C2",
+          "enrichment_context": "Communication to a known-malicious or blacklisted IP on a non-standard port strongly indicates active C2 communication. The originating host should be treated as compromised. Non-standard ports are used to evade firewall rules that only inspect common ports.",
+          "immediate_containment": "Block the destination IP at the perimeter firewall immediately. Isolate the originating host via EDR.",
+          "playbook_steps": [
+            "1. Block the C2 IP and any associated domains at the perimeter firewall.",
+            "2. Isolate the originating internal host via EDR quarantine.",
+            "3. Review the host for malware persistence mechanisms.",
+            "4. Decode and analyse any encoded payload captured in the traffic.",
+            "5. Check threat intel for the C2 IP — identify malware family if possible.",
+            "6. Review CVE-2021-44228 and CVE-2021-26084 patch status on the affected host.",
+            "7. Submit the C2 IP, port, and payload hash as IOCs.",
+            "8. Escalate to Tier-2 for full incident investigation."
+          ]
+        },
+        {
+          "match_keywords": ["port scan", "internal scan", "dmz target", "smb traffic", "lateral movement pattern"],
+          "mitre_technique": "T1046 - Network Service Scanning",
+          "possible_cve": "CVE-2017-0144 (EternalBlue/WannaCry) - commonly exploited after internal SMB scanning",
+          "enrichment_context": "Internal port scanning targeting the DMZ or other segments indicates an attacker or compromised host mapping the network for lateral movement opportunities. SMB scanning may indicate preparation for EternalBlue exploitation.",
+          "immediate_containment": "Block the scanning host from communicating with DMZ segment at the internal firewall. Investigate the scanning host for compromise.",
+          "playbook_steps": [
+            "1. Block traffic from the scanning host to DMZ and other sensitive segments at the internal firewall.",
+            "2. Investigate the scanning host via EDR telemetry for the process responsible for the scan.",
+            "3. Determine whether the scan was generated by an approved asset discovery tool or unauthorised software.",
+            "4. If unauthorised: treat host as compromised and follow Malware playbook.",
+            "5. Review patch status for CVE-2017-0144 across all hosts in the scanned range.",
+            "6. Check for any successful connections made to open ports discovered during the scan.",
+            "7. Document findings and escalate to Tier-2 if compromise is confirmed."
+          ]
+        },
+        {
+          "match_keywords": ["known cdn", "software update", "backup", "scheduled task", "approved", "routine", "low volume"],
+          "mitre_technique": "N/A - Likely false positive",
+          "possible_cve": "N/A",
+          "enrichment_context": "Traffic pattern is consistent with legitimate business activity: scheduled backup, software update distribution from a known CDN, or an approved asset discovery tool. Low risk indicator.",
+          "immediate_containment": "No immediate containment required.",
+          "playbook_steps": [
+            "1. Verify the traffic source and destination against approved application and backup schedules.",
+            "2. Confirm the CDN or destination is on the approved vendor list.",
+            "3. If confirmed legitimate: whitelist the traffic pattern to reduce future alert noise.",
+            "4. Document and close ticket as false positive or resolved."
+          ]
+        }
+      ]
+    },
+
+    "Data Policy Violation": {
+      "category_label": "Policy Violation",
+      "mitre_tactic": "TA0010 - Exfiltration / TA0009 - Collection",
+      "default_mitre_technique": "T1567 - Exfiltration Over Web Service",
+      "indicator_rules": [
+        {
+          "match_keywords": ["bulk pii", "pii download", "ssn pattern", "2000 customer", "mass data download", "confidential files", "departure indicator"],
+          "mitre_technique": "T1530 - Data from Cloud Storage / T1213 - Data from Information Repositories",
+          "possible_cve": "N/A (insider threat; no CVE applicable)",
+          "enrichment_context": "Bulk download of PII or confidential records, especially after hours or near a departure date, is a strong insider threat indicator. This type of event may also trigger regulatory breach notification obligations depending on data volume and type (GDPR, HIPAA, CCPA).",
+          "immediate_containment": "Suspend the account pending investigation. Preserve access logs and file audit trail. Do NOT alert the user — preserve the investigation.",
+          "playbook_steps": [
+            "1. Immediately preserve all access logs, file audit trails, and DLP reports related to this event.",
+            "2. Suspend the user account WITHOUT notifying the user to protect investigation integrity.",
+            "3. Identify precisely which files were downloaded: classify sensitivity and regulatory category (PII, PHI, financial).",
+            "4. Check whether the data was transmitted externally (email, cloud upload, USB) following the download.",
+            "5. Escalate to Tier-2, HR, and Legal immediately.",
+            "6. Determine whether regulatory breach notification is required (GDPR 72-hour window, HIPAA, CCPA).",
+            "7. Revoke all active sessions for the account.",
+            "8. Coordinate with Legal on evidence preservation before any device collection."
+          ]
+        },
+        {
+          "match_keywords": ["terminated employee", "active session", "former employee", "after hours access"],
+          "mitre_technique": "T1078.002 - Domain Accounts (unauthorised use)",
+          "possible_cve": "N/A (access control failure; no CVE applicable)",
+          "enrichment_context": "An active session using credentials associated with a terminated employee indicates either a de-provisioning failure or credential theft and reuse. Both scenarios require immediate investigation. Check whether the credential was disabled at termination.",
+          "immediate_containment": "Revoke the active session immediately. Disable the account in all identity systems. Review de-provisioning checklist for completeness.",
+          "playbook_steps": [
+            "1. Terminate the active session immediately in the identity provider.",
+            "2. Disable the account in Active Directory, Okta, Azure AD, and all other identity systems.",
+            "3. Determine whether the account should have been disabled at termination — review the offboarding checklist.",
+            "4. Identify all actions taken during the unauthorised session: files accessed, data copied, settings changed.",
+            "5. Check all systems the account had access to for signs of unauthorised changes.",
+            "6. If credentials appear to have been used by a third party: treat as external compromise and escalate to Tier-2.",
+            "7. Coordinate with HR and Legal on documentation.",
+            "8. Strengthen de-provisioning procedures to prevent recurrence."
+          ]
+        },
+        {
+          "match_keywords": ["personal cloud", "cloud upload", "usb write", "unapproved device", "unmanaged printer", "print job"],
+          "mitre_technique": "T1567.002 - Exfiltration to Cloud Storage / T1052 - Exfiltration Over Physical Medium",
+          "possible_cve": "N/A (policy violation; no CVE applicable)",
+          "enrichment_context": "Upload to personal cloud storage or write to unapproved removable media may indicate data exfiltration or careless policy breach. Severity depends on the sensitivity classification of the files involved. Unmanaged printers bypass DRM controls and create physical data exposure risk.",
+          "immediate_containment": "Block the personal cloud storage domain or USB device at endpoint DLP. Retrieve the print job output if possible.",
+          "playbook_steps": [
+            "1. Identify the files involved and classify their sensitivity level.",
+            "2. Determine whether the upload or transfer was intentional or accidental.",
+            "3. Block the personal cloud storage domain or disable USB write access at endpoint DLP policy.",
+            "4. If file is sensitive: contact the user and their manager; initiate a data handling policy reminder.",
+            "5. If file is highly sensitive or PII: escalate to Tier-2 and Legal for breach assessment.",
+            "6. Remotely wipe or delete the uploaded data from the personal cloud account if accessible.",
+            "7. Document the incident and update DLP rules to prevent recurrence.",
+            "8. Provide targeted security awareness training to the user."
+          ]
+        },
+        {
+          "match_keywords": ["non-sensitive", "public", "approved", "internal recipient", "low volume", "no policy violation"],
+          "mitre_technique": "N/A - Likely false positive",
+          "possible_cve": "N/A",
+          "enrichment_context": "File classification and transfer destination indicate no actual policy violation. Data is either public, approved for the destination, or sent to an internal recipient with appropriate permissions.",
+          "immediate_containment": "No containment required.",
+          "playbook_steps": [
+            "1. Verify the file classification and confirm it is approved for the transfer destination.",
+            "2. Confirm the recipient or destination is authorised.",
+            "3. Update DLP tuning rules to reduce future false positive alerts for this pattern.",
+            "4. Document and close ticket as false positive."
+          ]
+        }
+      ]
+    }
+  }
+}
