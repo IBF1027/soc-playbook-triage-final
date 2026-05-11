@@ -30,9 +30,9 @@ A safety override ensures no CRITICAL-severity ticket can ever be recommended to
 
 Requirements: Python 3.10+ - standard library only, no pip install required.
 
-    git clone https://github.com/IBF1027/soc-playbook-triage
-    cd soc-playbook-triage
-    python main.py --input demo/tickets.csv
+    git clone https://github.com/IBF1027/soc-playbook-triage-final
+    cd soc-playbook-triage-final
+    python main.py --input demo/tickets.csv  (the 20 ticket dataset, in folder it is within demo file as tickets.csv.numbers, appears as tickets.csv within github)
 
 Output:
 
