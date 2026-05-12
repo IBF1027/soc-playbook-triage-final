@@ -32,7 +32,7 @@ Requirements: Python 3.10+ - standard library only, no pip install required.
 
     git clone https://github.com/IBF1027/soc-playbook-triage-final
     cd soc-playbook-triage-final
-    python main.py --input demo/tickets.csv  (the 20 ticket dataset, in folder it is within data as tickets.csv.numbers, appears as tickets.csv within github)
+    python main.py --input demo/tickets.csv 
 
 Output:
 
